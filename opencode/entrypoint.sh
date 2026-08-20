@@ -12,43 +12,50 @@ set -e
 # ════════════════════════════════════════════════════════════
 
 # ── Volume layout ───────────────────────────────────────────
-mkdir -p /workspace/opencode/data \
+mkdir -p /workspace/openchamber/data \
+         /workspace/openchamber/config \
+         /workspace/opencode/data \
          /workspace/opencode/config \
+         /workspace/opencode/skills \
+         /workspace/opencode/mcp \
+         /workspace/skills \
+         /workspace/mcp \
          /workspace/repos \
          /workspace/.ssh \
          /workspace/logs
 chmod 700 /workspace/.ssh
 
-# OpenCode stores auth (auth.json) + state under ~/.local/share/opencode
-# and config under ~/.config/opencode. Point both at the volume so an
-# `opencode auth login` survives redeploys.
-#
-# NOTE: the opencode-ai npm postinstall creates these as REAL dirs at build
-# time, so they exist in the image on every boot. A naive `ln` would drop the
-# link *inside* that real dir, leaving auth.json on the ephemeral container
-# layer. So: unless the path is already our symlink, remove the build-time dir
-# first. (These paths live in the image layer, never on the volume.)
+# OpenChamber, OpenCode, MCP, and skills store auth, state, configs, and custom rules.
+# Point all relevant ~/.config, ~/.local/share, ~/.opencode, ~/.mcp, and ~/.skills at the persistent volume.
 mkdir -p /root/.local/share /root/.config
-for link in /root/.local/share/opencode /root/.config/opencode; do
+for link in /root/.local/share/openchamber /root/.config/openchamber \
+            /root/.local/share/opencode /root/.config/opencode \
+            /root/.opencode /root/.mcp /root/.skills /root/skills; do
     [ -L "$link" ] || rm -rf "$link"
 done
-ln -sfn /workspace/opencode/data   /root/.local/share/opencode
-ln -sfn /workspace/opencode/config /root/.config/opencode
-ln -sfn /workspace/.ssh            /root/.ssh
+ln -sfn /workspace/openchamber/data   /root/.local/share/openchamber
+ln -sfn /workspace/openchamber/config /root/.config/openchamber
+ln -sfn /workspace/opencode/data      /root/.local/share/opencode
+ln -sfn /workspace/opencode/config    /root/.config/opencode
+ln -sfn /workspace/opencode           /root/.opencode
+ln -sfn /workspace/mcp                /root/.mcp
+ln -sfn /workspace/skills             /root/.skills
+ln -sfn /workspace/skills             /root/skills
+ln -sfn /workspace/.ssh               /root/.ssh
 
 # ── Git / SSH bootstrap ─────────────────────────────────────
 # Generate an ed25519 key on first boot (persists via the volume).
 if [ ! -f /workspace/.ssh/id_ed25519 ]; then
     echo "[boot] generating ed25519 git key (first boot)..."
-    ssh-keygen -t ed25519 -C "opencode-devbox@$(hostname)" \
+    ssh-keygen -t ed25519 -C "openchamber-devbox@$(hostname)" \
         -f /workspace/.ssh/id_ed25519 -N "" -q
 fi
 chmod 600 /workspace/.ssh/id_ed25519 2>/dev/null || true
 chmod 644 /workspace/.ssh/id_ed25519.pub 2>/dev/null || true
 
 if ! grep -q "^github.com" /workspace/.ssh/known_hosts 2>/dev/null; then
-    echo "[boot] trusting github.com host keys..."
-    ssh-keyscan -t rsa,ecdsa,ed25519 github.com 2>/dev/null \
+    echo "[boot] trusting github.com and gitlab.com host keys..."
+    ssh-keyscan -t rsa,ecdsa,ed25519 github.com gitlab.com 2>/dev/null \
         >> /workspace/.ssh/known_hosts || true
     chmod 644 /workspace/.ssh/known_hosts
 fi
@@ -66,38 +73,45 @@ if [ -n "$GITHUB_TOKEN" ] && command -v gh >/dev/null 2>&1; then
     fi
 fi
 
-# ── OpenCode web UI basic-auth password ─────────────────────
-# The container's main process is `opencode web`, exposed on a PUBLIC Railway
-# domain — so it MUST be password-protected. Use a user-supplied password, or
-# generate one on first boot and persist it on the volume (stable across
-# redeploys). Username defaults to "opencode".
-export OPENCODE_SERVER_USERNAME="${OPENCODE_SERVER_USERNAME:-opencode}"
-if [ -z "$OPENCODE_SERVER_PASSWORD" ]; then
-    PWFILE=/workspace/.opencode-web-password
+# glab auth — re-run each boot if GITLAB_TOKEN or GLAB_TOKEN is provided.
+GLAB_AUTH_TOKEN="${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
+if [ -n "$GLAB_AUTH_TOKEN" ] && command -v glab >/dev/null 2>&1; then
+    if ! glab auth status >/dev/null 2>&1; then
+        echo "[boot] authenticating glab CLI..."
+        echo "$GLAB_AUTH_TOKEN" | glab auth login --stdin 2>/dev/null \
+            || echo "[boot] glab auth login failed (token may be invalid)"
+    fi
+fi
+
+# ── OpenChamber web UI password & host ───────────────────────
+export OPENCHAMBER_HOST="0.0.0.0"
+export OPENCHAMBER_UI_PASSWORD="${OPENCHAMBER_UI_PASSWORD:-${OPENCODE_SERVER_PASSWORD:-}}"
+if [ -z "$OPENCHAMBER_UI_PASSWORD" ]; then
+    PWFILE=/workspace/.openchamber-web-password
     if [ ! -f "$PWFILE" ]; then
         head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | cut -c1-24 > "$PWFILE"
         chmod 600 "$PWFILE"
     fi
-    export OPENCODE_SERVER_PASSWORD="$(cat "$PWFILE")"
+    export OPENCHAMBER_UI_PASSWORD="$(cat "$PWFILE")"
 fi
-echo "[boot] opencode web auth → user: ${OPENCODE_SERVER_USERNAME}  password: ${OPENCODE_SERVER_PASSWORD}"
+# Unset OPENCODE_SERVER_PASSWORD so managed local opencode daemon on 127.0.0.1 does not require basic-auth from OpenChamber
+unset OPENCODE_SERVER_PASSWORD OPENCODE_SERVER_USERNAME
+echo "[boot] openchamber web auth → password: ${OPENCHAMBER_UI_PASSWORD}"
 
 # ── Provider keys + web auth into SSH login shells ──────────
-# `railway ssh` opens a login shell; mirror selected vars into /etc/profile.d so
-# the TUI sees your provider keys (and a manual `opencode web` run is protected)
-# the moment you connect. (You can also run `opencode auth login` instead.)
-echo "[boot] writing /etc/profile.d/00-opencode-env.sh for SSH shells..."
+echo "[boot] writing /etc/profile.d/00-openchamber-env.sh for SSH shells..."
 {
     echo "# Auto-generated by entrypoint.sh on each boot."
-    for var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GITHUB_TOKEN \
-               OPENCODE_SERVER_USERNAME OPENCODE_SERVER_PASSWORD; do
+    for var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY DEEPSEEK_API_KEY \
+               TOGETHER_API_KEY MISTRAL_API_KEY GROQ_API_KEY XAI_API_KEY FIREWORKS_API_KEY PERPLEXITY_API_KEY \
+               GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN OPENCHAMBER_UI_PASSWORD; do
         val="${!var:-}"
         [ -n "$val" ] && printf 'export %s=%q\n' "$var" "$val"
     done
     # Land in your repos directory on login.
     echo 'cd /workspace/repos 2>/dev/null || true'
-} > /etc/profile.d/00-opencode-env.sh
-chmod 644 /etc/profile.d/00-opencode-env.sh
+} > /etc/profile.d/00-openchamber-env.sh
+chmod 644 /etc/profile.d/00-openchamber-env.sh
 
-echo "[boot] web UI → public Railway domain (basic auth).  TUI → railway ssh then 'opencode'."
+echo "[boot] OpenChamber server starting on port ${PORT:-8080}..."
 exec "$@"
