@@ -23,8 +23,8 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && dpkg -i /tmp/glab.deb \
     && rm /tmp/glab.deb
 
-# OpenCode engine + OpenChamber web UI
-RUN npm install -g opencode-ai@latest @openchamber/web@latest
+# OpenCode engine + OpenChamber web UI + Cloudflare Wrangler CLI
+RUN npm install -g opencode-ai@latest @openchamber/web@latest wrangler@latest
 
 WORKDIR /workspace
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
