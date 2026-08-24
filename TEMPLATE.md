@@ -26,7 +26,7 @@ One container runs **`openchamber`** on a public, password-protected Railway dom
 - **GitLab & GitHub Automation** — manage issues, MRs, and PRs with `glab` and `gh`.
 - **Long-running refactors or migrations** that keep going regardless of your local machine.
 
-## Dependencies
+## Dependencies for OpenChamber & OpenCode on Railway
 
 - A provider **API key** (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `DEEPSEEK_API_KEY`).
 - The **Railway CLI** for terminal/TUI access (`railway ssh`); the web UI needs only a browser.
