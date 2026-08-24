@@ -1,69 +1,83 @@
-# OpenCode on Railway
+# OpenChamber & OpenCode on Railway
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/opencode-cli-web-app?referralCode=jk_FgY&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-A one-click, self-hosted home for **[OpenCode](https://opencode.ai)** — the open-source AI coding
-agent — with **two ways in from one service**:
-
-- 🌐 **Web UI** — `opencode web` on a **public Railway domain** (HTTP basic auth), open it in a browser.
-- 💻 **TUI** — `railway ssh` into the same box and type `opencode`, just like Claude Code in a terminal.
-
-Both share the same `/workspace`, auth, and repos, which live on a Railway volume and survive redeploys.
+A self-hosted, cloud-native AI developer workstation on **Railway** featuring **[OpenChamber](https://openchamber.dev)** (the agentic web UI workspace) and **[OpenCode AI](https://opencode.ai)** with **pre-installed DevOps tooling** (Wrangler, GitLab CLI, GitHub CLI, Git SSH) and **zero-data-loss volume persistence**.
 
 ---
 
-## Quick start
+## 🌟 Key Features
 
-1. **Deploy** this template (button above). It provisions the service, a **Volume** at `/workspace`,
-   and a **public domain**.
-2. *(Optional)* set a provider key in **Variables** (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or
-   `OPENROUTER_API_KEY`) — or just `opencode auth login` later. Optional: `GITHUB_TOKEN`,
-   `GIT_USER_NAME`, `GIT_USER_EMAIL`, `OPENCODE_SERVER_PASSWORD`.
-3. **Web UI:** open the service's public URL. Log in with user `opencode` and the password printed
-   in the **deploy logs** (`[boot] opencode web auth → ...`), or whatever you set in
-   `OPENCODE_SERVER_PASSWORD`.
-4. **TUI:** from your machine —
+- 🌐 **OpenChamber Web UI**: Accessible on your public Railway domain with UI password protection (`OPENCHAMBER_UI_PASSWORD`).
+- 💻 **OpenCode Terminal TUI**: Connect anytime via `railway ssh` and run `opencode` or `opencode run "..."`.
+- ☁️ **Full Tooling Suite Included**:
+  - **Cloudflare Wrangler CLI** (`wrangler`): Deploy Workers, KV, D1, R2, Vectorize, and Pages.
+  - **GitLab CLI** (`glab`): Manage GitLab repositories, MRs, pipelines, and issues.
+  - **GitHub CLI** (`gh`): Manage GitHub repositories, PRs, and issues.
+  - **Git & SSH**: Pre-generated ed25519 SSH keys (`~/.ssh/id_ed25519`) with auto-trusted host keys.
+- 💾 **Absolute Zero Data Loss (`/workspace` Volume)**:
+  - OpenChamber configs & state (`~/.config/openchamber`, `~/.local/share/openchamber`)
+  - OpenCode configs (`opencode.json` / `opencode.jsonc`), sessions, & auth
+  - Custom Agent Skills (`/workspace/skills` ➔ `~/.skills`, `~/skills`)
+  - MCP Server Configurations (`/workspace/mcp` ➔ `~/.mcp`)
+  - Cloudflare Wrangler Auth & Cache (`/workspace/wrangler` ➔ `~/.wrangler`, `~/.config/wrangler`)
+  - Repositories (`/workspace/repos`) & SSH Keys (`/workspace/.ssh`)
+
+---
+
+## 🚀 Quick Start
+
+1. **Deploy to Railway**: Click the deploy button above or run `railway up` using the Railway CLI.
+2. **Configure Provider Keys (Optional)**: Set LLM provider keys in your Railway Variables:
+   - `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
+   - `OPENCHAMBER_UI_PASSWORD` (Web UI password, auto-generated in deploy logs if unset)
+   - `GITHUB_TOKEN`, `GITLAB_TOKEN`, `CLOUDFLARE_API_TOKEN`
+3. **Access Web UI**: Open your service's public domain URL in a browser and log in with your `OPENCHAMBER_UI_PASSWORD`.
+4. **Access Terminal TUI via SSH**:
    ```bash
-   railway link            # pick this project/service
-   railway ssh             # drop into the same container
-   opencode                # enter the OpenCode TUI
+   railway link          # Link project & service
+   railway ssh           # SSH into live container
+   opencode              # Launch OpenCode TUI
    ```
-5. Clone a repo and start coding — work in `/workspace/repos` so it persists:
+5. **Clone Repos & Work**:
    ```bash
-   cd /workspace/repos && git clone git@github.com:you/your-repo.git
+   cd /workspace/repos
+   git clone git@github.com:your-username/your-repo.git
    ```
 
-## What's in the box
+---
 
-| Tool | Why |
-|------|-----|
-| **OpenCode CLI** (`opencode-ai`) | `opencode web` (browser UI, the main process), `opencode` (TUI), `opencode run "…"` (headless) |
-| **git** + **SSH key** | clone/commit; an ed25519 key is generated on first boot (see `~/.ssh/id_ed25519.pub`) |
-| **GitHub CLI** (`gh`) | `gh pr create`, `gh issue`, etc. — auto-authenticated from `GITHUB_TOKEN` |
+## 🛠 Included Tooling
 
-## How it works
+| Tool | Purpose | CLI Command |
+|------|---------|-------------|
+| **OpenChamber Web** | Agentic browser workspace & UI | `openchamber` |
+| **OpenCode AI** | Open-source AI coding agent engine | `opencode` / `opencode run` |
+| **Cloudflare Wrangler** | Serverless Workers, KV, D1, R2 | `wrangler` |
+| **GitLab CLI** | GitLab MRs, issues, & pipelines | `glab` |
+| **GitHub CLI** | GitHub PRs, issues, & gists | `gh` |
+| **Git & OpenSSH** | Version control & ed25519 SSH keys | `git` / `ssh` |
 
-- The container's main process is **`opencode web --hostname 0.0.0.0 --port $PORT`**, mapped to the
-  public Railway domain and protected by HTTP basic auth (`OPENCODE_SERVER_PASSWORD`, auto-generated
-  and persisted on the volume if unset). This keeps the service alive.
-- `railway ssh` connects to the **same** container independently of that process, so `opencode` (TUI)
-  works alongside the web UI.
-- The entrypoint symlinks OpenCode's config/state and `~/.ssh` onto `/workspace`, so credentials and
-  sessions persist across redeploys; provider keys are mirrored into the SSH login shell.
+---
 
-See [`docs/USAGE.md`](docs/USAGE.md) for the full walkthrough,
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it's wired, and
-[`docs/PUBLISH.md`](docs/PUBLISH.md) to publish it to the Railway marketplace.
+## 📁 Persistent Volume Layout (`/workspace`)
 
-## Layout
+| Directory | Symlinked Path | Contents |
+|-----------|----------------|----------|
+| `/workspace/openchamber/config` | `~/.config/openchamber` | OpenChamber web UI settings |
+| `/workspace/openchamber/data` | `~/.local/share/openchamber` | OpenChamber workspace data & sessions |
+| `/workspace/opencode/config` | `~/.config/opencode` | `opencode.json` / `opencode.jsonc` configs |
+| `/workspace/opencode/data` | `~/.local/share/opencode` | OpenCode state & auth |
+| `/workspace/skills` | `~/.skills`, `~/skills` | Custom agent skills |
+| `/workspace/mcp` | `~/.mcp` | MCP server configurations |
+| `/workspace/wrangler` | `~/.wrangler`, `~/.config/wrangler` | Wrangler auth, OAuth, & deployment cache |
+| `/workspace/repos` | `/workspace/repos` | Cloned git repositories |
+| `/workspace/.ssh` | `~/.ssh` | SSH keys & `known_hosts` |
 
-```
-opencode-railway/
-├── opencode/               ← the deployable (Railway root directory)
-│   ├── Dockerfile
-│   ├── entrypoint.sh
-│   ├── railway.json
-│   └── .env.example
-├── docs/
-└── assets/
-```
+---
+
+## 📜 Documentation & Guides
+
+- [`docs/USAGE.md`](docs/USAGE.md) — Detailed user guide and CLI walkthrough.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Architecture, container wiring, and volume layout.
+- [`docs/PUBLISH.md`](docs/PUBLISH.md) — Template publishing guide.

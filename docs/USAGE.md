@@ -1,95 +1,89 @@
-# Usage — SSH in and run OpenCode
+# Usage — Web UI & Railway SSH Guide
 
-This box is meant to be used like a remote terminal: connect with `railway ssh`, type `opencode`,
-work, disconnect. Nothing about your session is lost when you leave — it all lives on the
-`/workspace` volume.
+This developer box offers two entry points: **OpenChamber Web UI** on your public domain, and the **OpenCode TUI** via `railway ssh`. Everything lives on the `/workspace` persistent volume.
 
-## 1. One-time setup
+---
 
-After deploying the template:
+## 1. Setup & Environment Variables
 
-1. **Attach a volume** at mount path `/workspace` (the template includes it; confirm it's present).
-2. **Set provider key(s)** in the service **Variables** tab — at least one of:
-   - `ANTHROPIC_API_KEY`
-   - `OPENAI_API_KEY`
-   - `OPENROUTER_API_KEY`
-3. *(Optional)* `GITHUB_TOKEN` to auto-authenticate `gh` and HTTPS git, and `GIT_USER_NAME` /
-   `GIT_USER_EMAIL` for commit identity.
+Set provider and tooling keys in the Railway **Variables** tab:
 
-Install the Railway CLI locally if you haven't:
+- **LLM Providers**: `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
+- **Web UI Protection**: `OPENCHAMBER_UI_PASSWORD` (auto-generated in deploy logs if unset)
+- **DevOps & Cloud Tokens**: `GITHUB_TOKEN`, `GITLAB_TOKEN` (or `GLAB_TOKEN`), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- **Git Identity**: `GIT_USER_NAME`, `GIT_USER_EMAIL`
+
+---
+
+## 2. Accessing the OpenChamber Web UI
+
+1. Open your service's public domain (e.g. `https://your-project.up.railway.app`) in your browser.
+2. Enter your password (`OPENCHAMBER_UI_PASSWORD` or the auto-generated password printed in Railway deploy logs).
+
+---
+
+## 3. Connecting via Terminal (`railway ssh`)
 
 ```bash
+# Install Railway CLI locally (if needed)
 npm i -g @railway/cli      # or: brew install railway
 railway login
+
+# Link and SSH into the live container
+railway link
+railway ssh
 ```
 
-## 2. Connect
-
+Once inside, launch the OpenCode TUI:
 ```bash
-railway link        # select this project + the opencode service
-railway ssh         # opens a shell inside the container
+opencode
 ```
 
-You'll land in `/workspace/repos`. Then just:
+---
 
+## 4. Pre-Installed CLI Tools
+
+### Cloudflare Wrangler (`wrangler`)
 ```bash
-opencode            # launches the OpenCode TUI
+wrangler whoami
+wrangler deploy
+```
+*(OAuth state and tokens persist in `/workspace/wrangler`).*
+
+### GitLab CLI (`glab`)
+```bash
+glab mr list
+glab issue create
 ```
 
-Switch agent modes with **Tab** (build / plan), and use OpenCode normally.
+### GitHub CLI (`gh`)
+```bash
+gh pr list
+gh issue create
+```
 
-## 3. Working with repos
+---
 
-Clone into `/workspace/repos` so your code persists across redeploys:
+## 5. Working with Git Repositories
+
+Clone repos into `/workspace/repos` so they persist across redeploys:
 
 ```bash
 cd /workspace/repos
-git clone git@github.com:you/your-repo.git     # SSH (uses the box's generated key)
-# or
-gh repo clone you/your-repo                     # HTTPS via gh, if GITHUB_TOKEN is set
+git clone git@github.com:your-username/your-repo.git
 ```
 
-**Add the box's SSH key to GitHub** (for `git@github.com:` clones over SSH):
-
+Add your box's generated SSH key to GitHub/GitLab:
 ```bash
-cat ~/.ssh/id_ed25519.pub      # copy this into GitHub → Settings → SSH keys
+cat ~/.ssh/id_ed25519.pub
 ```
 
-## 4. Authentication options
-
-You have two equivalent ways to give OpenCode a model:
-
-- **Railway variables** (set in step 1) — mirrored into the SSH shell automatically.
-- **`opencode auth login`** — run it once inside the box; credentials are written to
-  `~/.local/share/opencode/auth.json`, which is symlinked onto the `/workspace` volume and reused on
-  every reconnect.
-
-## 5. Headless / one-shot
-
-You don't have to use the TUI — `run` executes a single prompt and exits:
-
-```bash
-opencode run "summarize what this repo does and list the entry points"
-```
+---
 
 ## 6. Housekeeping
 
 ```bash
-opencode upgrade        # update OpenCode to the latest version
-df -h /workspace        # check volume usage
+# Update OpenCode or OpenChamber
+opencode upgrade
+df -h /workspace        # Check volume usage
 ```
-
-## Notes & gotchas
-
-- **Always work under `/workspace`.** Files written elsewhere (e.g. `/root`, `/tmp`) are **lost on
-  redeploy** — only the volume persists.
-- `railway ssh` runs a login shell, which sources `/etc/profile.d/00-opencode-env.sh`; that's how
-  your provider keys reach `opencode`. If a key seems missing, re-check the Variables tab and
-  reconnect.
-- **Web UI:** the container's main process is `opencode web` on the public Railway domain, behind
-  HTTP basic auth (user `opencode`, password from `OPENCODE_SERVER_PASSWORD` — auto-generated on
-  first boot and printed in the deploy logs / stored at `/workspace/.opencode-web-password`). The
-  TUI over SSH and the web UI run in the **same** container and share `/workspace`, auth, and repos.
-- **Rotating the web password:** set `OPENCODE_SERVER_PASSWORD` in Variables (redeploys), or edit
-  `/workspace/.opencode-web-password` and restart. To make the box private again, remove the
-  service's public domain in Railway → only `railway ssh` remains.
