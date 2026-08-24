@@ -1,6 +1,6 @@
 # OpenChamber & OpenCode on Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/opencode-cli-web-app?referralCode=jk_FgY&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/deploy?template=https://github.com/NOOBGLITCH/opencode-railway&referralCode=jk_FgY&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 A self-hosted, cloud-native AI developer workstation on **Railway** featuring **[OpenChamber](https://openchamber.dev)** (the agentic web UI workspace) and **[OpenCode AI](https://opencode.ai)** with **pre-installed DevOps tooling** (Wrangler, GitLab CLI, GitHub CLI, Git SSH) and **zero-data-loss volume persistence**.
 
