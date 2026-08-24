@@ -39,6 +39,108 @@ One container runs **`openchamber`** on a public, password-protected Railway dom
 - [GitLab CLI](https://gitlab.com/gitlab-org/cli) — Official GitLab CLI (`glab`).
 - [GitHub CLI](https://cli.github.com/) — Official GitHub CLI (`gh`).
 
-### Why This Template?
+---
 
-One click gives you OpenChamber & OpenCode with pre-installed DevOps tools, two front doors (browser UI + SSH TUI), and volume-backed zero data loss across every redeploy. Source and docs: <https://github.com/NOOBGLITCH/Opencode-on-Railway>.
+# Railway Template Creation & Publishing Guide
+
+Here is the complete guide on how to create and publish a Railway Template using both the Railway CLI and the Virtual GUI Dashboard.
+
+---
+
+## 🛠 Method 1: Using the Railway CLI
+
+### Step 1: Create a Draft Template
+
+Run `railway templates create` from your project directory:
+
+```bash
+railway templates create --json
+```
+
+**Output**:
+
+```json
+{
+  "id": "f3fcd487-d385-416d-841f-56210834653c",
+  "code": "V7lUun",
+  "editorUrl": "https://railway.com/workspace/templates/f3fcd487-d385-416d-841f-56210834653c",
+  "status": "UNPUBLISHED"
+}
+```
+
+---
+
+### Step 2: Write the Template Markdown File (`TEMPLATE.md`)
+
+Create a `TEMPLATE.md` file in your repository. Railway's validator strictly requires a `## Dependencies for <Title>` heading:
+
+```markdown
+# Deploy and Host Your-App-Name on Railway
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/your-user/your-repo/main/assets/hero.png" width="720">
+</p>
+
+Overview of what your app does, features, and why users should deploy it.
+
+## About Hosting Your-App-Name
+
+Details about container process, persistent storage, and architecture.
+
+## Dependencies for Your-App-Name on Railway
+
+- Required environment variables (e.g., `API_KEY`, `DATABASE_URL`).
+
+### Deployment Dependencies
+
+- Tooling, frameworks, or database services included.
+```
+
+---
+
+### Step 3: Publish via CLI Command
+
+```bash
+railway templates publish <DRAFT_ID> \
+  --category AI/ML \
+  --description "Short description under 75 characters" \
+  --readme-file TEMPLATE.md \
+  --image https://raw.githubusercontent.com/your-user/your-repo/main/assets/card.png \
+  --json
+```
+
+**Valid Categories**: `AI/ML`, `Analytics`, `Authentication`, `Automation`, `Bots`, `CMS`, `Observability`, `Starters`, `Storage`, `Queues`, `Other`.
+
+---
+
+## 🖥 Method 2: Using the Virtual GUI Dashboard
+
+### Step 1: Open the Railway Templates Studio
+
+1. Open your browser and navigate to `https://railway.com/workspace/templates`.
+2. Click **+ New Template** (or open your draft `editorUrl`).
+
+---
+
+### Step 2: Configure the Interactive Canvas & Inspector
+
+1. **Select Source Project**: Pick the project and environment to snapshot.
+2. **Service Node Settings**:
+   - Click the Service node on the canvas.
+   - Set **Service Name**, **Icon**, and **Root Directory** (e.g. `opencode`).
+3. **Volume Node Settings**:
+   - Ensure the persistent Volume node is connected to the service with mount path `/workspace`.
+4. **Environment Variables Tab**:
+   - Review captured variables (`OPENROUTER_API_KEY`, `OPENCHAMBER_UI_PASSWORD`).
+   - Toggle variables as **Required** or **Optional** (values are never stored, only names).
+5. **Markdown Overview Editor**:
+   - Paste your `TEMPLATE.md` content into the **Overview / Readme** text box.
+6. **Card & Metadata**:
+   - Set **Category** (e.g. `AI/ML`).
+   - Paste **Card Image URL** (e.g., `https://raw.githubusercontent.com/.../card.png`).
+
+---
+
+### Step 3: Publish in the Virtual GUI
+
+Click **Publish Template** at the top right of the GUI. Your template will immediately go live with a shareable URL: `https://railway.com/deploy/<your-code>`.
