@@ -1,7 +1,7 @@
 # Deploy and Host OpenChamber & OpenCode on Railway
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/NOOBGLITCH/opencode-railway/main/assets/hero.png" alt="OpenChamber & OpenCode — open-source AI coding agent workspace" width="720">
+  <img src="https://raw.githubusercontent.com/NOOBGLITCH/Opencode-on-Railway/main/assets/hero.png" alt="OpenChamber & OpenCode — open-source AI coding agent workspace" width="720">
 </p>
 
 [OpenChamber](https://openchamber.dev) and [OpenCode](https://opencode.ai) provide a complete, self-hosted **AI coding agent workstation** — reading your repo, writing and editing code, executing commands, running serverless deployments, and opening pull requests. This template provisions a Railway service with **two front doors**: a **browser web UI (OpenChamber)** on a public domain, and the **`opencode` terminal TUI** over `railway ssh` — both sharing one persistent `/workspace` volume with pre-installed DevOps tools (Wrangler, GitLab CLI, GitHub CLI, Git SSH).
@@ -41,4 +41,4 @@ One container runs **`openchamber`** on a public, password-protected Railway dom
 
 ### Why This Template?
 
-One click gives you OpenChamber & OpenCode with pre-installed DevOps tools, two front doors (browser UI + SSH TUI), and volume-backed zero data loss across every redeploy. Source and docs: <https://github.com/NOOBGLITCH/opencode-railway>.
+One click gives you OpenChamber & OpenCode with pre-installed DevOps tools, two front doors (browser UI + SSH TUI), and volume-backed zero data loss across every redeploy. Source and docs: <https://github.com/NOOBGLITCH/Opencode-on-Railway>.
