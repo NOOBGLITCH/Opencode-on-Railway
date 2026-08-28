@@ -90,6 +90,7 @@ fi
 
 # ── OpenChamber web UI password & host ───────────────────────
 export OPENCHAMBER_HOST="0.0.0.0"
+export OPENCHAMBER_SYSTEMD_UNIT="${OPENCHAMBER_SYSTEMD_UNIT:-openchamber}"
 export OPENCHAMBER_UI_PASSWORD="${OPENCHAMBER_UI_PASSWORD:-${OPENCODE_SERVER_PASSWORD:-}}"
 if [ -z "$OPENCHAMBER_UI_PASSWORD" ]; then
     PWFILE=/workspace/.openchamber-web-password

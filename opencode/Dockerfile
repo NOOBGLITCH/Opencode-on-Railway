@@ -35,8 +35,14 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/xdg-open \
     && chmod +x /usr/local/bin/xdg-open
 
+# Add systemd shims so in-UI update clicks execute gracefully without 409 Conflict errors
+RUN printf '#!/bin/sh\neval "last_arg=\\${$#}"\nif [ -n "$last_arg" ]; then\n  nohup /bin/sh -c "$last_arg" > /tmp/openchamber-update.log 2>&1 &\nfi\nexit 0\n' > /usr/local/bin/systemd-run \
+    && printf '#!/bin/sh\n(sleep 1 && (pkill -f "openchamber serve" || kill 1)) &\nexit 0\n' > /usr/local/bin/systemctl \
+    && chmod +x /usr/local/bin/systemd-run /usr/local/bin/systemctl
+
 # The web UI listens here; Railway maps the public domain to $PORT.
 ENV PORT=8080
+ENV OPENCHAMBER_SYSTEMD_UNIT=openchamber
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
