@@ -42,7 +42,8 @@ RUN printf '#!/bin/sh\neval "last_arg=\\${$#}"\nif [ -n "$last_arg" ]; then\n  n
 
 # The web UI listens here; Railway maps the public domain to $PORT.
 ENV PORT=8080
-ENV OPENCHAMBER_SYSTEMD_UNIT=openchamber
+ENV INVOCATION_ID=openchamber-container-service
+ENV OPENCHAMBER_SYSTEMD_UNIT=openchamber.service
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

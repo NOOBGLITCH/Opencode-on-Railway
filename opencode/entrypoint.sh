@@ -90,7 +90,8 @@ fi
 
 # ── OpenChamber web UI password & host ───────────────────────
 export OPENCHAMBER_HOST="0.0.0.0"
-export OPENCHAMBER_SYSTEMD_UNIT="${OPENCHAMBER_SYSTEMD_UNIT:-openchamber}"
+export INVOCATION_ID="${INVOCATION_ID:-openchamber-container-service}"
+export OPENCHAMBER_SYSTEMD_UNIT="${OPENCHAMBER_SYSTEMD_UNIT:-openchamber.service}"
 export OPENCHAMBER_UI_PASSWORD="${OPENCHAMBER_UI_PASSWORD:-${OPENCODE_SERVER_PASSWORD:-}}"
 if [ -z "$OPENCHAMBER_UI_PASSWORD" ]; then
     PWFILE=/workspace/.openchamber-web-password
@@ -111,7 +112,7 @@ echo "[boot] writing /etc/profile.d/00-openchamber-env.sh for SSH shells..."
     for var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY DEEPSEEK_API_KEY \
                TOGETHER_API_KEY MISTRAL_API_KEY GROQ_API_KEY XAI_API_KEY FIREWORKS_API_KEY PERPLEXITY_API_KEY \
                CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID \
-               GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN OPENCHAMBER_UI_PASSWORD OPENCHAMBER_SYSTEMD_UNIT; do
+               GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN OPENCHAMBER_UI_PASSWORD OPENCHAMBER_SYSTEMD_UNIT INVOCATION_ID; do
         val="${!var:-}"
         [ -n "$val" ] && printf 'export %s=%q\n' "$var" "$val"
     done
