@@ -92,9 +92,11 @@ fi
 export OPENCHAMBER_HOST="0.0.0.0"
 export INVOCATION_ID="${INVOCATION_ID:-openchamber-container-service}"
 export OPENCHAMBER_SYSTEMD_UNIT="${OPENCHAMBER_SYSTEMD_UNIT:-openchamber.service}"
-export OPENCHAMBER_UI_PASSWORD="${OPENCHAMBER_UI_PASSWORD:-${OPENCODE_SERVER_PASSWORD:-}}"
-if [ -z "$OPENCHAMBER_UI_PASSWORD" ]; then
-    PWFILE=/workspace/.openchamber-web-password
+PWFILE=/workspace/.openchamber-web-password
+if [ -n "$OPENCHAMBER_UI_PASSWORD" ]; then
+    echo "$OPENCHAMBER_UI_PASSWORD" > "$PWFILE"
+    chmod 600 "$PWFILE"
+else
     if [ ! -f "$PWFILE" ]; then
         head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | cut -c1-24 > "$PWFILE"
         chmod 600 "$PWFILE"
