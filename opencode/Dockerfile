@@ -23,6 +23,14 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && dpkg -i /tmp/glab.deb \
     && rm /tmp/glab.deb
 
+# Cloudflared & ngrok — so OpenChamber Web UI can expose instances over Cloudflare & ngrok tunnels
+RUN curl -sSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb" -o /tmp/cloudflared.deb \
+    && dpkg -i /tmp/cloudflared.deb \
+    && rm /tmp/cloudflared.deb \
+    && curl -sSL "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz" -o /tmp/ngrok.tgz \
+    && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
+    && rm /tmp/ngrok.tgz
+
 # OpenCode engine + OpenChamber web UI + Cloudflare Wrangler CLI
 RUN npm install -g opencode-ai@latest @openchamber/web@latest wrangler@latest
 
