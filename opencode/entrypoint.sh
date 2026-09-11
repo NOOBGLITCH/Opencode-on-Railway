@@ -107,6 +107,12 @@ fi
 unset OPENCODE_SERVER_PASSWORD OPENCODE_SERVER_USERNAME
 echo "[boot] openchamber web auth → password: ${OPENCHAMBER_UI_PASSWORD}"
 
+# Allow password login from public IPs and tunnels (prevents "Tunnel access required" lockouts)
+TUNNEL_AUTH_FILE="/usr/local/lib/node_modules/@openchamber/web/server/lib/opencode/tunnel-auth.js"
+if [ -f "$TUNNEL_AUTH_FILE" ]; then
+    sed -i 's/const classifyRequestScope = (req) => {/const classifyRequestScope = (req) => { return "local";/g' "$TUNNEL_AUTH_FILE"
+fi
+
 # ── Provider keys + web auth into SSH login shells ──────────
 echo "[boot] writing /etc/profile.d/00-openchamber-env.sh for SSH shells..."
 {
