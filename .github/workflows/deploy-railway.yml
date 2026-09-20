@@ -1,53 +1,93 @@
+# =============================================================================
+# Workflow: Deploy to Railway
+# -----------------------------------------------------------------------------
+# Deploys the ./opencode service (Dockerfile) to Railway on every push to
+# `main` that touches the service code, plus on-demand via the GitHub UI
+# (workflow_dispatch).
+#
+# Required GitHub repo secrets (Settings > Secrets and variables > Actions):
+#   RAILWAY_TOKEN       - Railway project token (Railway dashboard > Project >
+#                         Tokens). Must have access to the target environment.
+#   RAILWAY_PROJECT_ID  - From the dashboard URL: /project/<PROJECT_ID>
+#   RAILWAY_SERVICE_ID  - From the dashboard URL: /service/<SERVICE_ID>
+# Optional secrets:
+#   RAILWAY_ENVIRONMENT - Environment name or ID (defaults to "production"
+#                         when unset). Stored as a secret so forks/PRs can't
+#                         redirect deploys by editing the workflow file.
+#   OPENCHAMBER_UI_PASSWORD - Web UI password. NOT used by this workflow; set
+#                         it as a Railway service variable instead so the
+#                         running container can read it at boot.
+#
+# After a successful deploy, enable public access once in the dashboard:
+#   Service > Settings > Networking > Generate Domain (public Railway domain).
+# =============================================================================
+
 name: Deploy to Railway
 
 on:
   push:
     branches:
+      # Only `main` auto-deploys; feature branches never trigger a deploy.
       - main
     paths:
+      # Limit runs to changes that actually affect the deployed service or
+      # this workflow itself, avoiding deploys on docs-only edits.
       - "opencode/**"
       - ".github/workflows/deploy-railway.yml"
+  # Allow manual deploys from the GitHub UI (Actions tab > Run workflow).
   workflow_dispatch:
 
 concurrency:
+  # Serialize production deploys; a newer push cancels an in-flight older one
+  # so Railway never ends up serving a stale build.
   group: railway-production
   cancel-in-progress: true
 
 jobs:
   deploy:
+    # Fresh Ubuntu runner per deploy; no state carries over between runs.
     runs-on: ubuntu-latest
 
     steps:
+      # Check out the repo so the ./opencode directory (Dockerfile + config)
+      # is available for `railway up`.
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Install the Railway CLI and add it to PATH for subsequent steps.
+      # Uses the official install script; GITHUB_PATH persists the bin dir.
       - name: Install Railway CLI
         run: |
           curl -fsSL https://railway.com/install.sh | sh
           echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
 
+      # Sanity check: fail fast with a clear log line if the CLI install broke.
       - name: Verify Railway CLI
         run: railway --version
 
-      # Requires 3 repo secrets:
-      #   RAILWAY_TOKEN      – Railway project token (Project > Tokens)
-      #   RAILWAY_PROJECT_ID – from Railway dashboard URL: /project/<PROJECT_ID>
-      #   RAILWAY_SERVICE_ID – from Railway dashboard URL: /service/<SERVICE_ID>
-      # Optional:
-      #   RAILWAY_ENVIRONMENT – environment name or ID (defaults to "production")
+      # Main deploy step. Runs with ./opencode as cwd so its Dockerfile and
+      # railway.json are uploaded as the deploy root.
       - name: Deploy opencode/ to Railway
         working-directory: opencode
         env:
+          # Secrets are masked as *** in logs by GitHub automatically.
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
           RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
         run: |
+          # Fail fast with an actionable error if any required secret is unset.
           test -n "$RAILWAY_TOKEN" || { echo "::error::Missing secret RAILWAY_TOKEN"; exit 1; }
           test -n "$RAILWAY_PROJECT_ID" || { echo "::error::Missing secret RAILWAY_PROJECT_ID"; exit 1; }
           test -n "$RAILWAY_SERVICE_ID" || { echo "::error::Missing secret RAILWAY_SERVICE_ID"; exit 1; }
+          # Default to the production environment when the optional secret is
+          # empty; accepts either an environment name or ID.
           ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
           echo "Deploying to project=$RAILWAY_PROJECT_ID environment=$ENV_NAME service=$RAILWAY_SERVICE_ID"
+          # Explicit --project/--environment/--service flags (no `railway link`)
+          # keep CI stateless. --ci streams build logs and waits for the final
+          # SUCCESS/FAILED verdict instead of returning early at upload time.
+          # -m tags the Railway deployment with the commit + run for auditing.
           railway up \
             --project "$RAILWAY_PROJECT_ID" \
             --environment "$ENV_NAME" \
