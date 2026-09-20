@@ -29,22 +29,28 @@ jobs:
       - name: Verify Railway CLI
         run: railway --version
 
-      - name: Link Railway project
+      # Requires 3 repo secrets:
+      #   RAILWAY_TOKEN      – Railway project token (Project > Tokens)
+      #   RAILWAY_PROJECT_ID – from Railway dashboard URL: /project/<PROJECT_ID>
+      #   RAILWAY_SERVICE_ID – from Railway dashboard URL: /service/<SERVICE_ID>
+      # Optional:
+      #   RAILWAY_ENVIRONMENT – environment name or ID (defaults to "production")
+      - name: Deploy opencode/ to Railway
+        working-directory: opencode
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
         run: |
-          test -n "$RAILWAY_TOKEN"
-          test -n "$RAILWAY_PROJECT_ID"
-          test -n "$RAILWAY_SERVICE_ID"
-          railway link --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID"
-
-      - name: Deploy Dockerfile to Railway
-        working-directory: opencode
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
-
-      - name: Deployment complete
-        run: echo "Railway deployment triggered successfully"
+          test -n "$RAILWAY_TOKEN" || { echo "::error::Missing secret RAILWAY_TOKEN"; exit 1; }
+          test -n "$RAILWAY_PROJECT_ID" || { echo "::error::Missing secret RAILWAY_PROJECT_ID"; exit 1; }
+          test -n "$RAILWAY_SERVICE_ID" || { echo "::error::Missing secret RAILWAY_SERVICE_ID"; exit 1; }
+          ENV_NAME="${RAILWAY_ENVIRONMENT:-production}"
+          echo "Deploying to project=$RAILWAY_PROJECT_ID environment=$ENV_NAME service=$RAILWAY_SERVICE_ID"
+          railway up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$ENV_NAME" \
+            --service "$RAILWAY_SERVICE_ID" \
+            --ci \
+            -m "deploy ${GITHUB_SHA} via ${GITHUB_WORKFLOW} #${GITHUB_RUN_NUMBER}"
