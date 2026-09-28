@@ -9,7 +9,24 @@ set -e
 # repos preserved across redeploys. Everything persistent lives on the
 # /workspace volume; symlinks make OpenCode and git find it in the usual
 # home-directory paths.
-# ════════════════════════════════════════════════════════════
+# ── zRAM compressed swap setup (x86_64) ──────────────────────
+# Safe activation: runs if container has /dev/zram0 or CAP_SYS_ADMIN.
+# Silently skips on standard unprivileged container runtimes.
+if [ -e /dev/zram0 ] || [ -e /sys/class/zram-control ]; then
+    if command -v zramctl >/dev/null 2>&1; then
+        (
+            echo "[boot] checking zRAM compressed swap..."
+            modprobe zram num_devices=1 2>/dev/null || true
+            zramctl --find --size 1G --algorithm zstd 2>/dev/null || \
+            zramctl --find --size 1G 2>/dev/null || true
+            if [ -b /dev/zram0 ]; then
+                mkswap /dev/zram0 >/dev/null 2>&1 && \
+                swapon -p 100 /dev/zram0 >/dev/null 2>&1 && \
+                echo "[boot] zRAM 1GB compressed swap activated"
+            fi
+        ) 2>/dev/null || true
+    fi
+fi
 
 # ── Volume layout ───────────────────────────────────────────
 mkdir -p /workspace/openchamber/data \
