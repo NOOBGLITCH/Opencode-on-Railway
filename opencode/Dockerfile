@@ -3,7 +3,7 @@ FROM node:22-slim
 # Target architecture: x86_64 (amd64)
 LABEL maintainer="NOOBGLITCH"
 LABEL architecture="x86_64"
-LABEL description="Optimized OpenCode + OpenChamber Devbox with zRAM and CLI tools"
+LABEL description="Optimized OpenCode + OpenChamber Devbox with Bun, zRAM and CLI tools"
 
 # 1. System dependencies + GitHub CLI + zram-tools in a single consolidated layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 2. GitLab CLI, Cloudflared, and ngrok for x86_64 (amd64) in a single cached layer
 RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" | grep -o '"tag_name":"v[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//') \
+    && ARCH=$(dpkg --print-architecture) \
     && curl -sSL "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_amd64.deb" -o /tmp/glab.deb \
     && dpkg -i /tmp/glab.deb \
     && curl -sSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb" -o /tmp/cloudflared.deb \
@@ -35,13 +36,14 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && rm -f /tmp/glab.deb /tmp/cloudflared.deb /tmp/ngrok.tgz
 
-# 3. OpenCode engine + OpenChamber web UI + Wrangler CLI with npm cache purge
-RUN npm install -g --omit=dev --no-audit --no-fund \
-        opencode-ai@latest \
-        @openchamber/web@latest \
-        wrangler@latest \
-    && npm cache clean --force \
-    && rm -rf /root/.npm /root/.cache /tmp/*
+# 3. Bun binary + OpenCode engine + OpenChamber web UI + Wrangler CLI
+COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
+RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
+    && bun add -g opencode-ai@latest @openchamber/web@latest wrangler@latest \
+    && ln -sf /root/.bun/bin/* /usr/local/bin/ \
+    && mkdir -p /usr/local/lib/node_modules/@openchamber \
+    && ln -sfn /root/.bun/install/global/node_modules/@openchamber/web /usr/local/lib/node_modules/@openchamber/web \
+    && rm -rf /root/.bun/install/cache /root/.npm /tmp/*
 
 WORKDIR /workspace
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -55,6 +57,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh \
     && chmod +x /usr/local/bin/systemd-run /usr/local/bin/systemctl
 
 # 5. Environment configuration for x86_64 runtime optimization
+ENV PATH="/root/.bun/bin:/usr/local/bin:${PATH}"
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV PORT=8080
