@@ -38,17 +38,19 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && rm -f /tmp/glab.deb /tmp/cloudflared.deb /tmp/ngrok.tgz
 
-# 3. Bun binary + OpenCode engine + OpenChamber web UI + Wrangler CLI + Caveman
+# 3. Bun binary + OpenCode v2 engine + OpenChamber web UI + Wrangler CLI + Caveman
 COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
-    && bun add -g opencode-ai@latest @openchamber/web@latest wrangler@latest @caveman-ai/cli@latest \
+    && curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.0.24 --no-modify-path \
+    && bun add -g @openchamber/web@latest wrangler@latest @caveman-ai/cli@latest \
     && mkdir -p /usr/local/lib/node_modules/@openchamber \
     && ln -sfn /root/.bun/install/global/node_modules/@openchamber/web /usr/local/lib/node_modules/@openchamber/web \
     && rm -rf /root/.bun/install/cache /root/.npm /tmp/* /var/tmp/*
 
-# 4. OpenCode upgrade wrapper (defaults --method bun for in-UI 1-click upgrades)
-RUN printf '#!/bin/sh\nif [ "$1" = "upgrade" ]; then\n  for arg in "$@"; do\n    case "$arg" in --method*|-m*) exec /root/.bun/bin/opencode "$@" ;;\n    esac\n  done\n  exec /root/.bun/bin/opencode "$@" --method bun\nfi\nexec /root/.bun/bin/opencode "$@"\n' > /usr/local/bin/opencode \
+# 4. OpenCode upgrade wrapper & global shims
+RUN printf '#!/bin/sh\nif [ "$1" = "upgrade" ]; then\n  curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path\n  exit $?\nfi\nexec /root/.opencode/bin/opencode "$@"\n' > /usr/local/bin/opencode \
     && chmod +x /usr/local/bin/opencode \
+    && ln -sf /usr/local/bin/opencode    /root/.bun/bin/opencode \
     && ln -sf /root/.bun/bin/openchamber /usr/local/bin/openchamber \
     && ln -sf /root/.bun/bin/wrangler    /usr/local/bin/wrangler \
     && ln -sf /root/.bun/bin/caveman     /usr/local/bin/caveman \

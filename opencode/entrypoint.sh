@@ -65,6 +65,11 @@ ln -sfn /workspace/skills             /root/.skills
 ln -sfn /workspace/skills             /root/skills
 ln -sfn /workspace/.ssh               /root/.ssh
 
+# Ensure 200MB opencode engine stays in container rootfs rather than eating 45% of /workspace volume
+mkdir -p /workspace/opencode/bin
+ln -sfn /usr/local/bin/opencode /workspace/opencode/bin/opencode
+ln -sfn /usr/local/bin/opencode /workspace/opencode/bin/opencode2
+
 # ── Git / SSH bootstrap ─────────────────────────────────────
 # Generate an ed25519 key on first boot (persists via the volume).
 if [ ! -f /workspace/.ssh/id_ed25519 ]; then
