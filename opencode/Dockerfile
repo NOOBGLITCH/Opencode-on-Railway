@@ -38,10 +38,10 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && rm -f /tmp/glab.deb /tmp/cloudflared.deb /tmp/ngrok.tgz
 
-# 3. Bun binary + OpenCode v2 engine + OpenChamber web UI + Wrangler CLI + Caveman
+# 3. Bun binary + OpenCode v2 engine (always latest) + OpenChamber web UI (always latest) + Wrangler CLI + Caveman
 COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
-    && curl -fsSL https://opencode.ai/v2/install | bash -s -- --version 2.0.24 --no-modify-path \
+    && curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path \
     && bun add -g @openchamber/web@latest wrangler@latest @caveman-ai/cli@latest \
     && mkdir -p /usr/local/lib/node_modules/@openchamber \
     && ln -sfn /root/.bun/install/global/node_modules/@openchamber/web /usr/local/lib/node_modules/@openchamber/web \
