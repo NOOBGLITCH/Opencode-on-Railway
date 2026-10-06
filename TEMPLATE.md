@@ -34,7 +34,7 @@ One container runs **`openchamber`** on a public, password-protected Railway dom
 ### Deployment Dependencies
 
 - [OpenChamber](https://github.com/openchamber/openchamber) — Open-source agentic web UI workspace (`@openchamber/web` on npm).
-- [OpenCode](https://github.com/anomalyco/opencode) — Open-source AI coding agent engine (`opencode-ai` on npm).
+- [OpenCode](https://github.com/anomalyco/opencode) — Open-source AI coding agent engine (`@opencode/cli` / native binary via `opencode.ai/v2/install`).
 - [Cloudflare Wrangler](https://developers.cloudflare.com/workers/wrangler/) — CLI for Workers & Pages (`wrangler` on npm).
 - [GitLab CLI](https://gitlab.com/gitlab-org/cli) — Official GitLab CLI (`glab`).
 - [GitHub CLI](https://cli.github.com/) — Official GitHub CLI (`gh`).
