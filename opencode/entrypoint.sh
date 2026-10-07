@@ -63,21 +63,6 @@ ln -sfn /workspace/skills             /root/.skills
 ln -sfn /workspace/skills             /root/skills
 ln -sfn /workspace/.ssh               /root/.ssh
 
-# Pre-seed Paseo config to disable heavy local speech model downloads on cloud containers
-if [ ! -f /workspace/paseo/config.json ]; then
-    cat <<'EOF' > /workspace/paseo/config.json
-{
-  "speech": {
-    "providers": {
-      "dictationStt": { "enabled": false },
-      "voiceTurnDetection": { "enabled": false },
-      "voiceStt": { "enabled": false },
-      "voiceTts": { "enabled": false }
-    }
-  }
-}
-EOF
-fi
 
 # Ensure opencode engine stays in container rootfs rather than eating /workspace volume
 mkdir -p /workspace/opencode/bin

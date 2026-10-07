@@ -78,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["bash", "-lc", "exec paseo daemon start --home /workspace/paseo --listen 0.0.0.0:${PORT:-8080} --hostnames true --web-ui --foreground"]
+CMD ["bash", "-lc", "exec paseo daemon run --home /workspace/paseo"]
