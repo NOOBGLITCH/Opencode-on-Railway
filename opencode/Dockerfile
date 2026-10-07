@@ -41,14 +41,16 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
 # 3. Bun binary + OpenCode v2 engine (always latest) + Paseo CLI (always latest) + Wrangler CLI + Caveman
 COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
-    && curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path \
+    && OPENCODE_VER=$(curl -fsSL https://opencode.ai/update/api/latest/cli/npm | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') \
+    && curl -sSL "https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-${OPENCODE_VER:-2.0.24}.tgz" | tar -xz -C /tmp \
+    && mv /tmp/package/bin/opencode /usr/local/bin/opencode \
+    && chmod 755 /usr/local/bin/opencode \
+    && rm -rf /tmp/package \
     && bun add -g @getpaseo/cli@latest wrangler@latest @caveman-ai/cli@latest \
     && rm -rf /root/.bun/install/cache /root/.npm /tmp/* /var/tmp/*
 
-# 4. OpenCode upgrade wrapper & global shims
-RUN printf '#!/bin/sh\nif [ "$1" = "upgrade" ]; then\n  curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path\n  exit $?\nfi\nexec /root/.opencode/bin/opencode "$@"\n' > /usr/local/bin/opencode \
-    && chmod +x /usr/local/bin/opencode \
-    && ln -sf /usr/local/bin/opencode    /root/.bun/bin/opencode \
+# 4. Global shims
+RUN ln -sf /usr/local/bin/opencode    /root/.bun/bin/opencode \
     && ln -sf /root/.bun/bin/paseo       /usr/local/bin/paseo \
     && ln -sf /root/.bun/bin/wrangler    /usr/local/bin/wrangler \
     && ln -sf /root/.bun/bin/caveman     /usr/local/bin/caveman \
