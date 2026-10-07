@@ -3,7 +3,7 @@ FROM node:22-slim
 # Target architecture: x86_64 (amd64)
 LABEL maintainer="NOOBGLITCH"
 LABEL architecture="x86_64"
-LABEL description="Optimized OpenCode + Paseo Devbox for Railway with Bun and zRAM"
+LABEL description="Optimized OpenCode Devbox for Railway with Bun and zRAM"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -38,7 +38,7 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && rm -f /tmp/glab.deb /tmp/cloudflared.deb /tmp/ngrok.tgz
 
-# 3. Bun binary + OpenCode v2 engine (always latest) + Paseo CLI (always latest) + Wrangler CLI + Caveman
+# 3. Bun binary + OpenCode v2 engine (always latest) + Wrangler CLI + Caveman
 COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
     && OPENCODE_VER=$(curl -fsSL https://opencode.ai/update/api/latest/cli/npm | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') \
@@ -46,12 +46,11 @@ RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
     && mv /tmp/package/bin/opencode /usr/local/bin/opencode \
     && chmod 755 /usr/local/bin/opencode \
     && rm -rf /tmp/package \
-    && bun add -g @getpaseo/cli@latest wrangler@latest @caveman-ai/cli@latest \
+    && bun add -g wrangler@latest @caveman-ai/cli@latest \
     && rm -rf /root/.bun/install/cache /root/.npm /tmp/* /var/tmp/*
 
 # 4. Global shims
 RUN ln -sf /usr/local/bin/opencode    /root/.bun/bin/opencode \
-    && ln -sf /root/.bun/bin/paseo       /usr/local/bin/paseo \
     && ln -sf /root/.bun/bin/wrangler    /usr/local/bin/wrangler \
     && ln -sf /root/.bun/bin/caveman     /usr/local/bin/caveman \
     && ln -sf /root/.bun/bin/cave        /usr/local/bin/cave
@@ -68,11 +67,6 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=384"
 ENV BUN_GARBAGE_COLLECTOR_LEVEL=1
 ENV PORT=8080
-ENV PASEO_HOME=/workspace/paseo
-ENV PASEO_WEB_UI_ENABLED=true
-ENV PASEO_HOSTNAMES=true
-ENV PASEO_VOICE_MODE_ENABLED=false
-ENV PASEO_DICTATION_ENABLED=false
 
 # Railway healthcheck & graceful stop signal
 STOPSIGNAL SIGTERM
@@ -82,4 +76,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["bash", "-lc", "exec paseo daemon run --home /workspace/paseo"]
+CMD ["bash", "-lc", "exec opencode serve --hostname 0.0.0.0 --port ${PORT:-8080}"]
