@@ -136,6 +136,8 @@ export PASEO_HOME="/workspace/paseo"
 export PASEO_LISTEN="0.0.0.0:${PORT:-8080}"
 export PASEO_HOSTNAMES="true"
 export PASEO_WEB_UI_ENABLED="true"
+export PASEO_VOICE_MODE_ENABLED="false"
+export PASEO_DICTATION_ENABLED="false"
 
 echo "[boot] Paseo web auth → password: ${PASEO_PASSWORD}"
 
