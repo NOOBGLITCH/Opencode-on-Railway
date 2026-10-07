@@ -1,22 +1,23 @@
-# OpenChamber & OpenCode on Railway
+# Paseo & OpenCode on Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openchamber-devbox)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/opencode-devbox)
 
-A self-hosted, cloud-native AI developer workstation on **Railway** featuring **[OpenChamber](https://openchamber.dev)** (the agentic web UI workspace) and **[OpenCode AI](https://opencode.ai)** with **pre-installed DevOps tooling** (Wrangler, GitLab CLI, GitHub CLI, Git SSH) and **zero-data-loss volume persistence**.
+A high-performance, lightweight, cloud-native AI developer workstation on **Railway** featuring **[Paseo](https://paseo.sh)** (the open-source coding agent control plane & web UI) and **[OpenCode AI](https://opencode.ai)** with **pre-installed DevOps tooling** (Wrangler, GitLab CLI, GitHub CLI, Git SSH) and **zero-data-loss volume persistence**.
 
 ---
 
 ## 🌟 Key Features
 
-- 🌐 **OpenChamber Web UI**: Accessible on your public Railway domain with UI password protection (`OPENCHAMBER_UI_PASSWORD`).
-- 💻 **OpenCode Terminal TUI**: Connect anytime via `railway ssh` and run `opencode` or `opencode run "..."`.
+- 🌐 **Paseo Web UI & Daemon**: Ultra-lean agent control plane accessible on your public Railway domain with password protection (`PASEO_PASSWORD`).
+- 💻 **OpenCode Terminal TUI & CLI**: Connect anytime via `railway ssh` and run `opencode` or `opencode run "..."` or drive agents via `paseo`.
+- ⚡ **50% Less Memory**: Replaces heavy multi-process setups with a single, efficient daemon, saving ~200MB RAM on Railway.
 - ☁️ **Full Tooling Suite Included**:
   - **Cloudflare Wrangler CLI** (`wrangler`): Deploy Workers, KV, D1, R2, Vectorize, and Pages.
   - **GitLab CLI** (`glab`): Manage GitLab repositories, MRs, pipelines, and issues.
   - **GitHub CLI** (`gh`): Manage GitHub repositories, PRs, and issues.
   - **Git & SSH**: Pre-generated ed25519 SSH keys (`~/.ssh/id_ed25519`) with auto-trusted host keys.
 - 💾 **Absolute Zero Data Loss (`/workspace` Volume)**:
-  - OpenChamber configs & state (`~/.config/openchamber`, `~/.local/share/openchamber`)
+  - Paseo configs, agent registries, & state (`/workspace/paseo` ➔ `~/.paseo`)
   - OpenCode configs (`opencode.json` / `opencode.jsonc`), sessions, & auth
   - Custom Agent Skills (`/workspace/skills` ➔ `~/.skills`, `~/skills`)
   - MCP Server Configurations (`/workspace/mcp` ➔ `~/.mcp`)
@@ -30,14 +31,16 @@ A self-hosted, cloud-native AI developer workstation on **Railway** featuring **
 1. **Deploy to Railway**: Click the deploy button above or run `railway up` using the Railway CLI.
 2. **Configure Provider Keys (Optional)**: Set LLM provider keys in your Railway Variables:
    - `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
-   - `OPENCHAMBER_UI_PASSWORD` (Web UI password, auto-generated in deploy logs if unset)
+   - `PASEO_PASSWORD` (Web UI password, auto-generated in deploy logs if unset; backwards compatible with `OPENCHAMBER_UI_PASSWORD`)
    - `GITHUB_TOKEN`, `GITLAB_TOKEN`, `CLOUDFLARE_API_TOKEN`
-3. **Access Web UI**: Open your service's public domain URL in a browser and log in with your `OPENCHAMBER_UI_PASSWORD`.
+3. **Access Web UI**: Open your service's public domain URL in a browser and log in with your `PASEO_PASSWORD`.
 4. **Access Terminal TUI via SSH**:
    ```bash
    railway link          # Link project & service
    railway ssh           # SSH into live container
    opencode              # Launch OpenCode TUI
+   # or manage agents with Paseo:
+   paseo ls
    ```
 5. **Clone Repos & Work**:
    ```bash
@@ -51,7 +54,7 @@ A self-hosted, cloud-native AI developer workstation on **Railway** featuring **
 
 | Tool | Purpose | CLI Command |
 |------|---------|-------------|
-| **OpenChamber Web** | Agentic browser workspace & UI | `openchamber` |
+| **Paseo Daemon & Web UI** | Multi-agent control plane & browser UI | `paseo` |
 | **OpenCode AI** | Open-source AI coding agent engine | `opencode` / `opencode run` |
 | **Cloudflare Wrangler** | Serverless Workers, KV, D1, R2 | `wrangler` |
 | **GitLab CLI** | GitLab MRs, issues, & pipelines | `glab` |
@@ -64,8 +67,7 @@ A self-hosted, cloud-native AI developer workstation on **Railway** featuring **
 
 | Directory | Symlinked Path | Contents |
 |-----------|----------------|----------|
-| `/workspace/openchamber/config` | `~/.config/openchamber` | OpenChamber web UI settings |
-| `/workspace/openchamber/data` | `~/.local/share/openchamber` | OpenChamber workspace data & sessions |
+| `/workspace/paseo` | `~/.paseo` | Paseo daemon configs, projects, worktrees, & agent state |
 | `/workspace/opencode/config` | `~/.config/opencode` | `opencode.json` / `opencode.jsonc` configs |
 | `/workspace/opencode/data` | `~/.local/share/opencode` | OpenCode state & auth |
 | `/workspace/skills` | `~/.skills`, `~/skills` | Custom agent skills |

@@ -3,7 +3,7 @@ FROM node:22-slim
 # Target architecture: x86_64 (amd64)
 LABEL maintainer="NOOBGLITCH"
 LABEL architecture="x86_64"
-LABEL description="Optimized OpenCode + OpenChamber Devbox for Railway with Bun and zRAM"
+LABEL description="Optimized OpenCode + Paseo Devbox for Railway with Bun and zRAM"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -38,50 +38,44 @@ RUN GLAB_VERSION=$(curl -sL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli
     && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin \
     && rm -f /tmp/glab.deb /tmp/cloudflared.deb /tmp/ngrok.tgz
 
-# 3. Bun binary + OpenCode v2 engine (always latest) + OpenChamber web UI (always latest) + Wrangler CLI + Caveman
+# 3. Bun binary + OpenCode v2 engine (always latest) + Paseo CLI (always latest) + Wrangler CLI + Caveman
 COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 RUN ln -sf /usr/local/bin/bun /usr/local/bin/bunx \
     && curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path \
-    && bun add -g @openchamber/web@latest wrangler@latest @caveman-ai/cli@latest \
-    && mkdir -p /usr/local/lib/node_modules/@openchamber \
-    && ln -sfn /root/.bun/install/global/node_modules/@openchamber/web /usr/local/lib/node_modules/@openchamber/web \
+    && bun add -g @getpaseo/cli@latest wrangler@latest @caveman-ai/cli@latest \
     && rm -rf /root/.bun/install/cache /root/.npm /tmp/* /var/tmp/*
 
 # 4. OpenCode upgrade wrapper & global shims
 RUN printf '#!/bin/sh\nif [ "$1" = "upgrade" ]; then\n  curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path\n  exit $?\nfi\nexec /root/.opencode/bin/opencode "$@"\n' > /usr/local/bin/opencode \
     && chmod +x /usr/local/bin/opencode \
     && ln -sf /usr/local/bin/opencode    /root/.bun/bin/opencode \
-    && ln -sf /root/.bun/bin/openchamber /usr/local/bin/openchamber \
+    && ln -sf /root/.bun/bin/paseo       /usr/local/bin/paseo \
     && ln -sf /root/.bun/bin/wrangler    /usr/local/bin/wrangler \
     && ln -sf /root/.bun/bin/caveman     /usr/local/bin/caveman \
     && ln -sf /root/.bun/bin/cave        /usr/local/bin/cave
 
 WORKDIR /workspace
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-
-# 5. Systemd shims and xdg-open headless shims
 RUN chmod +x /usr/local/bin/entrypoint.sh \
     && printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/xdg-open \
-    && chmod +x /usr/local/bin/xdg-open \
-    && printf '#!/bin/sh\neval "last_arg=\\${$#}"\nif [ -n "$last_arg" ]; then\n  nohup /bin/sh -c "$last_arg" > /tmp/openchamber-update.log 2>&1 &\nfi\nexit 0\n' > /usr/local/bin/systemd-run \
-    && printf '#!/bin/sh\n(sleep 1 && (pkill -f "openchamber serve" || kill 1)) &\nexit 0\n' > /usr/local/bin/systemctl \
-    && chmod +x /usr/local/bin/systemd-run /usr/local/bin/systemctl
+    && chmod +x /usr/local/bin/xdg-open
 
-# 6. Environment configuration for Railway runtime optimization
+# 5. Environment configuration for Railway runtime optimization
 ENV PATH="/root/.bun/bin:/usr/local/bin:${PATH}"
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=384"
 ENV BUN_GARBAGE_COLLECTOR_LEVEL=1
 ENV PORT=8080
-ENV INVOCATION_ID=openchamber-container-service
-ENV OPENCHAMBER_SYSTEMD_UNIT=openchamber.service
+ENV PASEO_HOME=/workspace/paseo
+ENV PASEO_WEB_UI_ENABLED=true
+ENV PASEO_HOSTNAMES=true
 
-# Railway healthcheck & graceful stop signal (prevents SQLite DB corruption on deploy/sleep)
+# Railway healthcheck & graceful stop signal
 STOPSIGNAL SIGTERM
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -f http://127.0.0.1:${PORT:-8080}/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://127.0.0.1:${PORT:-8080}/ || exit 1
 
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["bash", "-lc", "exec openchamber serve --host 0.0.0.0 --port ${PORT:-8080} --foreground"]
+CMD ["bash", "-lc", "exec paseo daemon start --home /workspace/paseo --listen 0.0.0.0:${PORT:-8080} --hostnames true --web-ui --foreground"]

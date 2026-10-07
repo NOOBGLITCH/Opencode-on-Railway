@@ -29,8 +29,7 @@ if [ -e /dev/zram0 ] || [ -e /sys/class/zram-control ]; then
 fi
 
 # ── Volume layout ───────────────────────────────────────────
-mkdir -p /workspace/openchamber/data \
-         /workspace/openchamber/config \
+mkdir -p /workspace/paseo \
          /workspace/opencode/data \
          /workspace/opencode/config \
          /workspace/opencode/skills \
@@ -43,17 +42,16 @@ mkdir -p /workspace/openchamber/data \
          /workspace/logs
 chmod 700 /workspace/.ssh
 
-# OpenChamber, OpenCode, Wrangler, MCP, and skills store auth, state, configs, and custom rules.
-# Point all relevant ~/.config, ~/.local/share, ~/.wrangler, ~/.opencode, ~/.mcp, and ~/.skills at the persistent volume.
+# Paseo, OpenCode, Wrangler, MCP, and skills store auth, state, configs, and custom rules.
+# Point all relevant ~/.config, ~/.local/share, ~/.paseo, ~/.wrangler, ~/.opencode, ~/.mcp, and ~/.skills at the persistent volume.
 mkdir -p /root/.local/share /root/.config
-for link in /root/.local/share/openchamber /root/.config/openchamber \
+for link in /root/.paseo \
             /root/.local/share/opencode /root/.config/opencode \
             /root/.opencode /root/.mcp /root/.skills /root/skills \
             /root/.wrangler /root/.config/.wrangler /root/.config/wrangler; do
     [ -L "$link" ] || rm -rf "$link"
 done
-ln -sfn /workspace/openchamber/data   /root/.local/share/openchamber
-ln -sfn /workspace/openchamber/config /root/.config/openchamber
+ln -sfn /workspace/paseo              /root/.paseo
 ln -sfn /workspace/opencode/data      /root/.local/share/opencode
 ln -sfn /workspace/opencode/config    /root/.config/opencode
 ln -sfn /workspace/opencode           /root/.opencode
@@ -65,7 +63,23 @@ ln -sfn /workspace/skills             /root/.skills
 ln -sfn /workspace/skills             /root/skills
 ln -sfn /workspace/.ssh               /root/.ssh
 
-# Ensure 200MB opencode engine stays in container rootfs rather than eating 45% of /workspace volume
+# Pre-seed Paseo config to disable heavy local speech model downloads on cloud containers
+if [ ! -f /workspace/paseo/config.json ]; then
+    cat <<'EOF' > /workspace/paseo/config.json
+{
+  "speech": {
+    "providers": {
+      "dictationStt": { "enabled": false },
+      "voiceTurnDetection": { "enabled": false },
+      "voiceStt": { "enabled": false },
+      "voiceTts": { "enabled": false }
+    }
+  }
+}
+EOF
+fi
+
+# Ensure opencode engine stays in container rootfs rather than eating /workspace volume
 mkdir -p /workspace/opencode/bin
 ln -sfn /usr/local/bin/opencode /workspace/opencode/bin/opencode
 ln -sfn /usr/local/bin/opencode /workspace/opencode/bin/opencode2
@@ -74,7 +88,7 @@ ln -sfn /usr/local/bin/opencode /workspace/opencode/bin/opencode2
 # Generate an ed25519 key on first boot (persists via the volume).
 if [ ! -f /workspace/.ssh/id_ed25519 ]; then
     echo "[boot] generating ed25519 git key (first boot)..."
-    ssh-keygen -t ed25519 -C "openchamber-devbox@$(hostname)" \
+    ssh-keygen -t ed25519 -C "paseo-devbox@$(hostname)" \
         -f /workspace/.ssh/id_ed25519 -N "" -q
 fi
 chmod 600 /workspace/.ssh/id_ed25519 2>/dev/null || true
@@ -110,48 +124,53 @@ if [ -n "$GLAB_AUTH_TOKEN" ] && command -v glab >/dev/null 2>&1; then
     fi
 fi
 
-# ── OpenChamber web UI password & host ───────────────────────
-export OPENCHAMBER_HOST="0.0.0.0"
-export INVOCATION_ID="${INVOCATION_ID:-openchamber-container-service}"
-export OPENCHAMBER_SYSTEMD_UNIT="${OPENCHAMBER_SYSTEMD_UNIT:-openchamber.service}"
-PWFILE=/workspace/.openchamber-web-password
-if [ -n "$OPENCHAMBER_UI_PASSWORD" ]; then
-    echo "$OPENCHAMBER_UI_PASSWORD" > "$PWFILE"
+# ── Paseo web UI password & runtime environment ──────────────
+PWFILE=/workspace/.paseo-password
+OLD_PWFILE=/workspace/.openchamber-web-password
+
+# Backward-compatibility: support PASEO_PASSWORD or legacy OPENCHAMBER_UI_PASSWORD
+USER_PW="${PASEO_PASSWORD:-${OPENCHAMBER_UI_PASSWORD:-}}"
+
+if [ -n "$USER_PW" ]; then
+    echo "$USER_PW" > "$PWFILE"
+    chmod 600 "$PWFILE"
+    export PASEO_PASSWORD="$USER_PW"
+elif [ -f "$PWFILE" ]; then
+    export PASEO_PASSWORD="$(cat "$PWFILE")"
+elif [ -f "$OLD_PWFILE" ]; then
+    export PASEO_PASSWORD="$(cat "$OLD_PWFILE")"
+    echo "$PASEO_PASSWORD" > "$PWFILE"
     chmod 600 "$PWFILE"
 else
-    if [ ! -f "$PWFILE" ]; then
-        head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | cut -c1-24 > "$PWFILE"
-        chmod 600 "$PWFILE"
-    fi
-    export OPENCHAMBER_UI_PASSWORD="$(cat "$PWFILE")"
+    head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | cut -c1-24 > "$PWFILE"
+    chmod 600 "$PWFILE"
+    export PASEO_PASSWORD="$(cat "$PWFILE")"
 fi
-# Unset OPENCODE_SERVER_PASSWORD so managed local opencode daemon on 127.0.0.1 does not require basic-auth from OpenChamber
-unset OPENCODE_SERVER_PASSWORD OPENCODE_SERVER_USERNAME
-echo "[boot] openchamber web auth → password: ${OPENCHAMBER_UI_PASSWORD}"
 
-# Allow password login from public IPs and tunnels (prevents "Tunnel access required" lockouts)
-for TUNNEL_AUTH_FILE in "/usr/local/lib/node_modules/@openchamber/web/server/lib/opencode/tunnel-auth.js" \
-                        "/root/.bun/install/global/node_modules/@openchamber/web/server/lib/opencode/tunnel-auth.js"; do
-    if [ -f "$TUNNEL_AUTH_FILE" ]; then
-        sed -i 's/const classifyRequestScope = (req) => {/const classifyRequestScope = (req) => { return "local";/g' "$TUNNEL_AUTH_FILE"
-    fi
-done
+export PASEO_HOME="/workspace/paseo"
+export PASEO_LISTEN="0.0.0.0:${PORT:-8080}"
+export PASEO_HOSTNAMES="true"
+export PASEO_WEB_UI_ENABLED="true"
 
-# ── Provider keys + web auth into SSH login shells ──────────
-echo "[boot] writing /etc/profile.d/00-openchamber-env.sh for SSH shells..."
+echo "[boot] Paseo web auth → password: ${PASEO_PASSWORD}"
+
+# ── Provider keys + auth into SSH login shells ──────────────
+rm -f /etc/profile.d/00-openchamber-env.sh 2>/dev/null || true
+echo "[boot] writing /etc/profile.d/00-paseo-env.sh for SSH shells..."
 {
     echo "# Auto-generated by entrypoint.sh on each boot."
     for var in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY GEMINI_API_KEY DEEPSEEK_API_KEY \
                TOGETHER_API_KEY MISTRAL_API_KEY GROQ_API_KEY XAI_API_KEY FIREWORKS_API_KEY PERPLEXITY_API_KEY \
                CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID \
-               GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN OPENCHAMBER_UI_PASSWORD OPENCHAMBER_SYSTEMD_UNIT INVOCATION_ID; do
+               GITHUB_TOKEN GITLAB_TOKEN GLAB_TOKEN \
+               PASEO_PASSWORD PASEO_HOME PASEO_LISTEN PASEO_HOSTNAMES PASEO_WEB_UI_ENABLED PORT; do
         val="${!var:-}"
         [ -n "$val" ] && printf 'export %s=%q\n' "$var" "$val"
     done
     # Land in your repos directory on login.
     echo 'cd /workspace/repos 2>/dev/null || true'
-} > /etc/profile.d/00-openchamber-env.sh
-chmod 644 /etc/profile.d/00-openchamber-env.sh
+} > /etc/profile.d/00-paseo-env.sh
+chmod 644 /etc/profile.d/00-paseo-env.sh
 
-echo "[boot] OpenChamber server starting on port ${PORT:-8080}..."
+echo "[boot] Paseo server starting on port ${PORT:-8080}..."
 exec "$@"

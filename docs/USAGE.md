@@ -1,6 +1,6 @@
 # Usage — Web UI & Railway SSH Guide
 
-This developer box offers two entry points: **OpenChamber Web UI** on your public domain, and the **OpenCode TUI** via `railway ssh`. Everything lives on the `/workspace` persistent volume.
+This developer box offers two entry points: **Paseo Web UI** on your public domain, and the **OpenCode TUI & Paseo CLI** via `railway ssh`. Everything lives on the `/workspace` persistent volume.
 
 ---
 
@@ -9,16 +9,16 @@ This developer box offers two entry points: **OpenChamber Web UI** on your publi
 Set provider and tooling keys in the Railway **Variables** tab:
 
 - **LLM Providers**: `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`
-- **Web UI Protection**: `OPENCHAMBER_UI_PASSWORD` (auto-generated in deploy logs if unset)
+- **Web UI Protection**: `PASEO_PASSWORD` (auto-generated in deploy logs if unset; backwards compatible with `OPENCHAMBER_UI_PASSWORD`)
 - **DevOps & Cloud Tokens**: `GITHUB_TOKEN`, `GITLAB_TOKEN` (or `GLAB_TOKEN`), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 - **Git Identity**: `GIT_USER_NAME`, `GIT_USER_EMAIL`
 
 ---
 
-## 2. Accessing the OpenChamber Web UI
+## 2. Accessing the Paseo Web UI
 
 1. Open your service's public domain (e.g. `https://your-project.up.railway.app`) in your browser.
-2. Enter your password (`OPENCHAMBER_UI_PASSWORD` or the auto-generated password printed in Railway deploy logs).
+2. Enter your password (`PASEO_PASSWORD` or the auto-generated password printed in Railway deploy logs).
 
 ---
 
@@ -37,6 +37,12 @@ railway ssh
 Once inside, launch the OpenCode TUI:
 ```bash
 opencode
+```
+
+Or manage agents with Paseo:
+```bash
+paseo ls
+paseo run "Write a summary of this repo"
 ```
 
 ---
@@ -83,7 +89,7 @@ cat ~/.ssh/id_ed25519.pub
 ## 6. Housekeeping
 
 ```bash
-# Update OpenCode or OpenChamber
+# Update OpenCode engine
 opencode upgrade
 df -h /workspace        # Check volume usage
 ```
